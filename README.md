@@ -5,15 +5,37 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Portal de Conductor · Mapa Operativo de Reparto Nocturno (Corte 6:30 PM)</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700;1,800&display=swap" rel="stylesheet" />
   <style>
-    body {
+    /* Fallback layout & visibility rules so the app works 100% even inside Markdown/Jekyll wrappers */
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
       font-family: 'Inter', sans-serif;
-      background-color: #050505;
-      color: #f5f5f5;
+      background-color: #050505 !important;
+      color: #f5f5f5 !important;
+    }
+    .hidden {
+      display: none !important;
+    }
+    #map {
+      width: 100% !important;
+      height: 360px !important;
+      min-height: 360px !important;
+      background: #111113;
+      z-index: 10;
+    }
+    @media (min-width: 640px) {
+      #map {
+        height: 460px !important;
+        min-height: 460px !important;
+      }
     }
     .shipsat-title {
       font-style: italic;
@@ -55,7 +77,7 @@
       border-radius: 999px;
     }
     .nav-btn-active {
-      background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+      background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%) !important;
       color: #ffffff !important;
       box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45);
     }
@@ -93,30 +115,80 @@
   <!-- Top Crimson Accent Strip -->
   <div class="h-1 w-full bg-gradient-to-r from-red-900 via-red-600 to-red-900"></div>
 
-  <!-- Compact, Non-Sticky Portal de Conductor Header -->
+  <!-- Compact, Non-Sticky Portal de Conductor Header with Editable Driver Profile -->
   <header class="max-w-5xl w-full mx-auto px-3 pt-2.5 pb-1">
     <div class="shipsat-card px-3.5 py-2.5 flex flex-col gap-2">
-      <!-- Row 1: Avatar + Title + Store Pill -->
+      <!-- Row 1: Avatar + Editable Driver Title/Email + Edit Button -->
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2.5 min-w-0">
-          <div class="w-8 h-8 rounded-full bg-gradient-to-b from-red-500 to-red-800 border border-red-400/50 flex items-center justify-center text-white font-extrabold text-sm shrink-0 shadow">
+          <div id="driverAvatarLetter" class="w-8 h-8 rounded-full bg-gradient-to-b from-red-500 to-red-800 border border-red-400/50 flex items-center justify-center text-white font-extrabold text-sm shrink-0 shadow">
             J
           </div>
           <div class="min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">
-              <h1 class="text-sm sm:text-base text-white shipsat-title leading-none">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <h1 id="driverDisplayName" class="text-sm sm:text-base text-white shipsat-title leading-none">
                 Portal de conductor
               </h1>
-              <span class="text-[10px] bg-red-950/90 text-red-300 border border-red-700/50 px-2 py-0.5 rounded-full font-semibold truncate">
+              <span id="driverStoreBadge" class="text-[10px] bg-red-950/90 text-red-300 border border-red-700/50 px-2 py-0.5 rounded-full font-semibold truncate">
                 Aurrera Jojutla Galeana [5336]
               </span>
             </div>
             <p class="text-[11px] text-neutral-400 truncate mt-0.5">
-              jose24215@shipsat.mx · Corte nocturno 6:30 PM
+              Hola, <span id="driverEmailDisplay" class="text-neutral-200 font-semibold">jose24215@shipsat.mx</span> · Corte 6:30 PM
             </p>
           </div>
         </div>
+
+        <button
+          id="toggleEditProfileBtn"
+          type="button"
+          class="px-2.5 py-1 rounded-full bg-neutral-900 hover:bg-neutral-800 border border-red-500/40 text-[11px] font-semibold text-red-200 shrink-0 transition"
+        >
+          ✎ Editar perfil
+        </button>
       </div>
+
+      <!-- Collapsible Driver Profile Editor (Name, Email/User, Store) -->
+      <form id="driverProfileForm" class="hidden pt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+        <div>
+          <label for="inputDriverName" class="block text-[10px] text-neutral-400 font-bold uppercase mb-0.5">Título / Nombre:</label>
+          <input
+            id="inputDriverName"
+            type="text"
+            value="Portal de conductor"
+            placeholder="Ej. Portal de conductor / José"
+            class="w-full bg-black border border-neutral-700 focus:border-red-500 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none"
+          />
+        </div>
+        <div>
+          <label for="inputDriverEmail" class="block text-[10px] text-neutral-400 font-bold uppercase mb-0.5">Correo / Usuario:</label>
+          <input
+            id="inputDriverEmail"
+            type="text"
+            value="jose24215@shipsat.mx"
+            placeholder="Ej. jose24215@shipsat.mx"
+            class="w-full bg-black border border-neutral-700 focus:border-red-500 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none"
+          />
+        </div>
+        <div class="flex items-end gap-1.5">
+          <div class="flex-1">
+            <label for="inputDriverStore" class="block text-[10px] text-neutral-400 font-bold uppercase mb-0.5">Tienda / Base:</label>
+            <input
+              id="inputDriverStore"
+              type="text"
+              value="Aurrera Jojutla Galeana [5336]"
+              placeholder="Ej. Aurrera Jojutla [5336]"
+              class="w-full bg-black border border-neutral-700 focus:border-red-500 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none"
+            />
+          </div>
+          <button
+            type="submit"
+            class="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-xs shrink-0 transition"
+          >
+            Guardar
+          </button>
+        </div>
+      </form>
 
       <!-- Row 2: Compact Clock Status + Simulate Button + Opacity Slider -->
       <div class="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-white/10">
@@ -126,7 +198,7 @@
         </div>
 
         <div class="flex items-center gap-1.5">
-          <button id="toggleSimBtn" class="px-2.5 py-1 rounded-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-[11px] font-semibold text-neutral-200 transition">
+          <button id="toggleSimBtn" type="button" class="px-2.5 py-1 rounded-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-[11px] font-semibold text-neutral-200 transition">
             Simular 6:30 PM (Oscurecer)
           </button>
 
@@ -165,10 +237,11 @@
                 placeholder="Pega link de Maps (corto o largo), coordenadas o escribe la colonia..."
                 class="w-full bg-black/85 border border-neutral-700 focus:border-red-500 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-neutral-500 outline-none transition"
               />
-              <button id="clearMapsBtn" class="hidden absolute right-3 top-2.5 text-neutral-400 hover:text-white text-xs">✕</button>
+              <button id="clearMapsBtn" type="button" class="hidden absolute right-3 top-2.5 text-neutral-400 hover:text-white text-xs">✕</button>
             </div>
             <button
               id="evaluateLinkBtn"
+              type="button"
               class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold text-xs sm:text-sm shadow-md shadow-red-900/40 transition whitespace-nowrap"
             >
               Evaluar Pedido
@@ -209,28 +282,28 @@
             </div>
           </div>
 
-          <!-- Quick Test Chips (Compact Horizontal Scroll on Mobile) -->
-          <div class="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1 text-[11px] no-scrollbar">
+          <!-- Quick Test Chips -->
+          <div class="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1 text-[11px]">
             <span class="text-neutral-400 shrink-0">Ejemplos:</span>
-            <button data-sample="https://maps.app.goo.gl/GtpeLsgdSH3D3tXw7" class="sample-link-btn shrink-0 px-2.5 py-0.5 rounded-full bg-red-600/30 hover:bg-red-600/50 border border-red-500/60 text-red-200 font-semibold transition">
+            <button type="button" data-sample="https://maps.app.goo.gl/GtpeLsgdSH3D3tXw7" class="sample-link-btn shrink-0 px-2.5 py-0.5 rounded-full bg-red-600/30 hover:bg-red-600/50 border border-red-500/60 text-red-200 font-semibold transition">
               Link corto: maps.app.goo.gl/GtpeL...
             </button>
-            <button data-sample="https://www.google.com/maps?q=18.6851,-99.2461 (Xoxocotla)" class="sample-link-btn shrink-0 px-2.5 py-0.5 rounded-full bg-red-950/60 border border-red-800/50 text-red-300 transition">
+            <button type="button" data-sample="https://www.google.com/maps?q=18.6851,-99.2461 (Xoxocotla)" class="sample-link-btn shrink-0 px-2.5 py-0.5 rounded-full bg-red-950/60 border border-red-800/50 text-red-300 transition">
               Link Xoxocotla (Riesgo)
             </button>
-            <button data-sample="https://www.google.com/maps/@18.6523,-99.2185,17z (Chiverías Carretera)" class="sample-link-btn shrink-0 px-2.5 py-0.5 rounded-full bg-amber-950/60 border border-amber-800/50 text-amber-300 transition">
+            <button type="button" data-sample="https://www.google.com/maps/@18.6523,-99.2185,17z (Chiverías Carretera)" class="sample-link-btn shrink-0 px-2.5 py-0.5 rounded-full bg-amber-950/60 border border-amber-800/50 text-amber-300 transition">
               Link Chiverías Carretera (Precaución)
             </button>
-            <button data-sample="https://www.google.com/maps/place/18.6023,-99.2002 (Villas Aqua)" class="sample-link-btn shrink-0 px-2.5 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 transition">
+            <button type="button" data-sample="https://www.google.com/maps/place/18.6023,-99.2002 (Villas Aqua)" class="sample-link-btn shrink-0 px-2.5 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 transition">
               Link Villas Aqua (No riesgoso)
             </button>
-            <button data-sample="https://www.google.com/maps?q=18.5773,-99.1803 (El Higuerón)" class="sample-link-btn shrink-0 px-2.5 py-0.5 rounded-full bg-red-950/60 border border-red-800/50 text-red-300 transition">
+            <button type="button" data-sample="https://www.google.com/maps?q=18.5773,-99.1803 (El Higuerón)" class="sample-link-btn shrink-0 px-2.5 py-0.5 rounded-full bg-red-950/60 border border-red-800/50 text-red-300 transition">
               Link El Higuerón (Riesgo)
             </button>
           </div>
         </div>
 
-        <!-- Verdict Result Banner (Appears right above the minimap when evaluated) -->
+        <!-- Verdict Result Banner -->
         <div id="verdictContainer" class="hidden shipsat-inner-card p-3 transition-all">
           <div class="flex flex-wrap items-center justify-between gap-2.5">
             <div class="flex items-center gap-3">
@@ -261,7 +334,7 @@
 
           <div id="verdictActionBanner" class="mt-2 pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-[11px]">
             <span id="verdictRuleText" class="font-medium text-neutral-200"></span>
-            <button id="verdictZoomBtn" class="px-3 py-1 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-[11px] transition">
+            <button id="verdictZoomBtn" type="button" class="px-3 py-1 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-[11px] transition">
               Ubicar punto en el mapa
             </button>
           </div>
@@ -298,7 +371,7 @@
               >
                 Crear Recuadro Rojo
               </button>
-              <button id="resetViewBtn" class="px-2.5 py-1 rounded-full bg-neutral-900 hover:bg-neutral-800 text-[11px] text-neutral-200 border border-neutral-700 transition font-semibold">
+              <button id="resetViewBtn" type="button" class="px-2.5 py-1 rounded-full bg-neutral-900 hover:bg-neutral-800 text-[11px] text-neutral-200 border border-neutral-700 transition font-semibold">
                 Ver toda la región
               </button>
             </div>
@@ -366,8 +439,8 @@
             </div>
           </form>
 
-          <!-- Leaflet Minimap Container (350px on mobile so it fits nicely on screen with the input bar) -->
-          <div id="map" class="w-full h-[350px] sm:h-[460px] z-10"></div>
+          <!-- Leaflet Minimap Container -->
+          <div id="map"></div>
 
           <!-- Quick Layer Checkboxes Bar Under the Map -->
           <div class="bg-black/95 border-t border-white/10 px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-neutral-300">
@@ -579,6 +652,7 @@
             </span>
             <button
               id="refreshNewsBtn"
+              type="button"
               class="px-3.5 py-1.5 rounded-full bg-neutral-900 hover:bg-neutral-800 border border-red-500/40 text-xs font-bold text-white transition flex items-center gap-1.5"
             >
               <span id="refreshSpinner" class="inline-block">↻</span>
@@ -626,7 +700,7 @@
         </div>
       </section>
 
-      <!-- Buscador de Zonas y Directorio Completo de Colonias (Moved to Noticias Page as requested) -->
+      <!-- Buscador de Zonas y Directorio Completo de Colonias -->
       <section class="shipsat-card p-4 sm:p-5 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -652,14 +726,14 @@
               placeholder="Filtrar colonia, pueblo o fraccionamiento..."
               class="w-full bg-black/85 border border-neutral-700 focus:border-red-500 rounded-xl px-3.5 py-2 text-xs text-white placeholder-neutral-500 outline-none transition"
             />
-            <button id="clearSearchBtn" class="hidden absolute right-3 top-2 text-xs text-neutral-400 hover:text-white">✕</button>
+            <button id="clearSearchBtn" type="button" class="hidden absolute right-3 top-2 text-xs text-neutral-400 hover:text-white">✕</button>
           </div>
 
           <div class="md:col-span-6 grid grid-cols-4 gap-1.5 bg-black/85 p-1 rounded-xl border border-neutral-800 text-[11px] font-semibold">
-            <button data-filter="all" class="filter-tab py-1.5 rounded-lg bg-red-600 text-white transition">Todas</button>
-            <button data-filter="red" class="filter-tab py-1.5 rounded-lg text-red-400 hover:bg-neutral-900 transition">Rojas (11)</button>
-            <button data-filter="green" class="filter-tab py-1.5 rounded-lg text-emerald-400 hover:bg-neutral-900 transition">Verdes (9)</button>
-            <button data-filter="news" class="filter-tab py-1.5 rounded-lg text-amber-400 hover:bg-neutral-900 transition">Noticias (5)</button>
+            <button type="button" data-filter="all" class="filter-tab py-1.5 rounded-lg bg-red-600 text-white transition">Todas</button>
+            <button type="button" data-filter="red" class="filter-tab py-1.5 rounded-lg text-red-400 hover:bg-neutral-900 transition">Rojas (11)</button>
+            <button type="button" data-filter="green" class="filter-tab py-1.5 rounded-lg text-emerald-400 hover:bg-neutral-900 transition">Verdes (9)</button>
+            <button type="button" data-filter="news" class="filter-tab py-1.5 rounded-lg text-amber-400 hover:bg-neutral-900 transition">Noticias (5)</button>
           </div>
         </div>
 
@@ -697,21 +771,45 @@
 
   <!-- Floating Bottom Navigation Bar (3 Separate Pages: MAPA, Reportes, Noticias) -->
   <nav class="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[94%] max-w-md shipsat-bottom-nav p-1.5 flex items-center justify-between text-xs font-bold text-neutral-400">
-    <button data-page="pageMapa" class="bottom-nav-btn nav-btn-active flex-1 py-2 px-3 rounded-full flex flex-col items-center justify-center gap-0.5 transition">
+    <button type="button" data-page="pageMapa" class="bottom-nav-btn nav-btn-active flex-1 py-2 px-3 rounded-full flex flex-col items-center justify-center gap-0.5 transition">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
       <span>MAPA</span>
     </button>
-    <button data-page="pageReportes" class="bottom-nav-btn flex-1 py-2 px-3 rounded-full flex flex-col items-center justify-center gap-0.5 hover:text-white transition">
+    <button type="button" data-page="pageReportes" class="bottom-nav-btn flex-1 py-2 px-3 rounded-full flex flex-col items-center justify-center gap-0.5 hover:text-white transition">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
       <span>Reportes</span>
     </button>
-    <button data-page="pageNoticias" class="bottom-nav-btn flex-1 py-2 px-3 rounded-full flex flex-col items-center justify-center gap-0.5 hover:text-white transition">
+    <button type="button" data-page="pageNoticias" class="bottom-nav-btn flex-1 py-2 px-3 rounded-full flex flex-col items-center justify-center gap-0.5 hover:text-white transition">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
       <span>Noticias</span>
     </button>
   </nav>
 
   <script>
+    // Auto-clean any accidental markdown/Jekyll wrapper text (like "Zonas-Rojas", "<!DOCTYPE html>", "```html") if pasted into README.md
+    function cleanAccidentalMarkdownNoise() {
+      try {
+        const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+        const toClean = [];
+        let node;
+        while ((node = walk.nextNode())) {
+          const val = node.nodeValue || '';
+          if (val.includes('<!DOCTYPE') || val.includes('```')) {
+            toClean.push(node);
+          }
+        }
+        toClean.forEach(n => {
+          n.nodeValue = n.nodeValue.replace(/<!DOCTYPE[^>]*>/gi, '').replace(/```html|```/gi, '');
+        });
+        document.querySelectorAll('h1, h2, p, pre, code').forEach(el => {
+          const txt = (el.textContent || '').trim();
+          if (txt === 'Zonas-Rojas' || txt === '<!DOCTYPE html>' || txt.startsWith('```')) {
+            el.style.display = 'none';
+          }
+        });
+      } catch (_) {}
+    }
+
     const ZONES = [
       // RED ZONES (User List)
       {
@@ -1300,7 +1398,32 @@
       return [...ZONES, ...customRedZones];
     }
 
+    function applyProfileToUI(name, email, store) {
+      const cleanName = (name || 'Portal de conductor').trim();
+      const cleanEmail = (email || 'jose24215@shipsat.mx').trim();
+      const cleanStore = (store || 'Aurrera Jojutla Galeana [5336]').trim();
+
+      document.getElementById('driverDisplayName').textContent = cleanName;
+      document.getElementById('driverEmailDisplay').textContent = cleanEmail;
+      document.getElementById('driverStoreBadge').textContent = cleanStore;
+
+      const initialSource = cleanEmail || cleanName || 'J';
+      document.getElementById('driverAvatarLetter').textContent = initialSource.charAt(0).toUpperCase();
+
+      document.getElementById('inputDriverName').value = cleanName;
+      document.getElementById('inputDriverEmail').value = cleanEmail;
+      document.getElementById('inputDriverStore').value = cleanStore;
+    }
+
     function loadStoredData() {
+      try {
+        const savedProfile = localStorage.getItem('shipsat_driver_profile_v1');
+        if (savedProfile) {
+          const p = JSON.parse(savedProfile);
+          applyProfileToUI(p.name, p.email, p.store);
+        }
+      } catch (_) {}
+
       try {
         const savedReports = localStorage.getItem('shipsat_driver_reports_v1');
         if (savedReports) {
@@ -1374,6 +1497,7 @@
     }
 
     function updateTempRedZonePreview() {
+      if (!map) return;
       if (tempRedZonePreviewLayer) {
         map.removeLayer(tempRedZonePreviewLayer);
         tempRedZonePreviewLayer = null;
@@ -1419,7 +1543,13 @@
       ['pageMapa', 'pageReportes', 'pageNoticias'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-          el.classList.toggle('hidden', id !== pageId);
+          if (id === pageId) {
+            el.classList.remove('hidden');
+            el.style.display = 'block';
+          } else {
+            el.classList.add('hidden');
+            el.style.display = 'none';
+          }
         }
       });
 
@@ -1430,14 +1560,23 @@
       if (pageId === 'pageMapa' && map) {
         setTimeout(() => {
           map.invalidateSize();
-        }, 80);
+        }, 100);
       }
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function initMap() {
+      cleanAccidentalMarkdownNoise();
       loadStoredData();
+
+      if (typeof L === 'undefined') {
+        const mapEl = document.getElementById('map');
+        if (mapEl) {
+          mapEl.innerHTML = '<div style="padding:20px;color:#fca5a5;font-size:12px;">Cargando librería de mapas... Verifica tu conexión a internet.</div>';
+        }
+        return;
+      }
 
       map = L.map('map', {
         center: [18.6380, -99.2050],
@@ -1449,6 +1588,10 @@
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
+
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 200);
 
       map.on('click', e => {
         const { lat, lng } = e.latlng;
@@ -1796,7 +1939,7 @@
       lastEvaluatedLatLng = point || (zone ? zone.center : null);
       zoomBtn.classList.toggle('hidden', !lastEvaluatedLatLng);
 
-      if (lastEvaluatedLatLng) {
+      if (lastEvaluatedLatLng && map) {
         if (evalMarker) map.removeLayer(evalMarker);
         evalMarker = L.circleMarker(lastEvaluatedLatLng, {
           radius: 9,
@@ -1851,6 +1994,7 @@
     }
 
     function renderMapZones() {
+      if (!map) return;
       Object.values(layerRefs).forEach(l => map.removeLayer(l));
       layerRefs = {};
 
@@ -1918,7 +2062,9 @@
     }
 
     function renderCustomReports() {
-      reportMarkers.forEach(m => map.removeLayer(m));
+      if (map) {
+        reportMarkers.forEach(m => map.removeLayer(m));
+      }
       reportMarkers = [];
 
       const filterVal = document.getElementById('filterReportLocality').value;
@@ -1931,35 +2077,37 @@
 
       counterEl.textContent = `${customReports.length} reporte${customReports.length === 1 ? '' : 's'} activo${customReports.length === 1 ? '' : 's'}`;
 
-      customReports.forEach(rep => {
-        if (!rep.coords) return;
-        const fillCol =
-          rep.nivel === 'riesgo' ? '#ef4444' : rep.nivel === 'precaucion' ? '#f59e0b' : '#38bdf8';
+      if (map) {
+        customReports.forEach(rep => {
+          if (!rep.coords) return;
+          const fillCol =
+            rep.nivel === 'riesgo' ? '#ef4444' : rep.nivel === 'precaucion' ? '#f59e0b' : '#38bdf8';
 
-        const marker = L.circleMarker(rep.coords, {
-          radius: 7,
-          color: '#ffffff',
-          weight: 2,
-          fillColor: fillCol,
-          fillOpacity: 0.95
-        }).addTo(map);
+          const marker = L.circleMarker(rep.coords, {
+            radius: 7,
+            color: '#ffffff',
+            weight: 2,
+            fillColor: fillCol,
+            fillOpacity: 0.95
+          }).addTo(map);
 
-        marker.bindPopup(`
-          <div style="font-family:'Inter',sans-serif;min-width:200px;">
-            <div style="font-size:10px;font-weight:800;text-transform:uppercase;color:#b91c1c;">
-              LUGAR: ${rep.lugar}
+          marker.bindPopup(`
+            <div style="font-family:'Inter',sans-serif;min-width:200px;">
+              <div style="font-size:10px;font-weight:800;text-transform:uppercase;color:#b91c1c;">
+                LUGAR: ${rep.lugar}
+              </div>
+              <div style="font-weight:700;font-size:13px;color:#0f172a;margin-top:2px;">
+                ${rep.ubicacion || 'Reporte en localidad'}
+              </div>
+              <div style="font-size:12px;color:#334155;margin-top:4px;">
+                <strong>Reporte:</strong> ${rep.reporte}
+              </div>
+              <div style="font-size:10px;color:#64748b;margin-top:4px;">${rep.fecha}</div>
             </div>
-            <div style="font-weight:700;font-size:13px;color:#0f172a;margin-top:2px;">
-              ${rep.ubicacion || 'Reporte en localidad'}
-            </div>
-            <div style="font-size:12px;color:#334155;margin-top:4px;">
-              <strong>Reporte:</strong> ${rep.reporte}
-            </div>
-            <div style="font-size:10px;color:#64748b;margin-top:4px;">${rep.fecha}</div>
-          </div>
-        `);
-        reportMarkers.push(marker);
-      });
+          `);
+          reportMarkers.push(marker);
+        });
+      }
 
       if (filtered.length === 0) {
         listEl.innerHTML = `
@@ -2007,10 +2155,10 @@
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="text-[10px] text-neutral-400">${rep.fecha}</span>
-                  <button data-focus-rep="${rep.id}" class="focus-rep-btn text-[11px] text-red-400 hover:text-red-300 font-bold">
+                  <button type="button" data-focus-rep="${rep.id}" class="focus-rep-btn text-[11px] text-red-400 hover:text-red-300 font-bold">
                     Ver en MAPA
                   </button>
-                  <button data-del-rep="${rep.id}" class="del-rep-btn text-[11px] text-neutral-500 hover:text-neutral-300" title="Eliminar reporte">
+                  <button type="button" data-del-rep="${rep.id}" class="del-rep-btn text-[11px] text-neutral-500 hover:text-neutral-300" title="Eliminar reporte">
                     ✕
                   </button>
                 </div>
@@ -2040,7 +2188,7 @@
           if (rep && rep.coords) {
             switchPage('pageMapa');
             setTimeout(() => {
-              map.flyTo(rep.coords, 15, { duration: 0.7 });
+              if (map) map.flyTo(rep.coords, 15, { duration: 0.7 });
             }, 120);
           }
         });
@@ -2121,150 +2269,4 @@
                 </div>
                 <div class="flex items-center gap-1.5">
                   <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${pillClass}">
-                    ${pillLabel}
-                  </span>
-                  ${
-                    z.isCustom
-                      ? `<button data-del-zone="${z.id}" class="del-custom-zone-btn text-xs text-neutral-400 hover:text-red-300 px-1" title="Eliminar recuadro rojo">✕</button>`
-                      : ''
-                  }
-                </div>
-              </div>
-              <p class="text-[11px] text-neutral-300 mt-1.5 leading-snug">${z.notes}</p>
-              <div class="mt-2 text-[10px] font-bold text-red-400 flex items-center justify-end">
-                Ver en MAPA →
-              </div>
-            </div>
-          `;
-        })
-        .join('');
-
-      document.querySelectorAll('.zone-card').forEach(card => {
-        card.addEventListener('click', e => {
-          if (e.target.closest('.del-custom-zone-btn')) return;
-          const id = card.getAttribute('data-zone-id');
-          switchPage('pageMapa');
-          setTimeout(() => {
-            focusZone(id);
-          }, 120);
-        });
-      });
-
-      document.querySelectorAll('.del-custom-zone-btn').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const id = btn.getAttribute('data-del-zone');
-          customRedZones = customRedZones.filter(z => z.id !== id);
-          saveStoredRedZones();
-          renderMapZones();
-          renderSidebarList();
-        });
-      });
-    }
-
-    function focusZone(id) {
-      const zone = getAllZones().find(z => z.id === id);
-      if (!zone) return;
-
-      if (zone.category === 'red' && !document.getElementById('chkRed').checked) {
-        document.getElementById('chkRed').checked = true;
-        renderMapZones();
-      } else if (zone.category === 'green' && !document.getElementById('chkGreen').checked) {
-        document.getElementById('chkGreen').checked = true;
-        renderMapZones();
-      } else if (zone.category === 'news' && !document.getElementById('chkNews').checked) {
-        document.getElementById('chkNews').checked = true;
-        renderMapZones();
-      }
-
-      const layer = layerRefs[id];
-      if (layer) {
-        map.flyTo(zone.center, 14, { duration: 0.7 });
-        layer.openPopup();
-      }
-    }
-
-    async function fetchLiveSecurityNews() {
-      const container = document.getElementById('newsFeedContainer');
-      const badge = document.getElementById('newsStatusBadge');
-      badge.textContent = 'Buscando reportes recientes en Morelos...';
-
-      let liveItems = [];
-      try {
-        const rssUrl = encodeURIComponent(
-          'https://news.google.com/rss/search?q=seguridad+OR+inseguridad+Jojutla+OR+Zacatepec+OR+Xoxocotla+OR+Tlaltizapan+Morelos&hl=es-419&gl=MX&ceid=MX:es-419'
-        );
-        const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && Array.isArray(data.items) && data.items.length > 0) {
-            liveItems = data.items.slice(0, 2).map(item => ({
-              title: item.title,
-              source: item.author || 'Monitoreo Noticias Morelos (En Vivo)',
-              date: item.pubDate ? item.pubDate.split(' ')[0] : 'Reciente',
-              zoneTag: 'Reporte detectado automáticamente al actualizar',
-              summary: 'Noticia recuperada en tiempo real del buscador de seguridad de la zona sur de Morelos.',
-              url: item.link
-            }));
-          }
-        }
-      } catch (_) {}
-
-      const combined = [...liveItems, ...VERIFIED_LOCAL_NEWS];
-      const nowTime = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-      badge.textContent = `Actualizado hoy a las ${nowTime}`;
-
-      container.innerHTML = combined
-        .map(
-          item => `
-          <div class="shipsat-inner-card p-3.5 flex flex-col justify-between gap-2 hover:border-red-500/40 transition">
-            <div>
-              <div class="flex items-center justify-between gap-2 text-[10px] text-neutral-400 mb-1">
-                <span class="font-bold text-red-400 uppercase tracking-wider">${item.source}</span>
-                <span>${item.date}</span>
-              </div>
-              <div class="text-xs sm:text-sm font-bold text-white leading-snug">
-                ${item.title}
-              </div>
-              <div class="text-[11px] text-amber-300/90 font-medium mt-1">
-                Zona: ${item.zoneTag}
-              </div>
-              <p class="text-xs text-neutral-300 mt-1.5 leading-relaxed">
-                ${item.summary}
-              </p>
-            </div>
-            <div class="pt-2 border-t border-white/5 flex justify-end">
-              <a
-                href="${item.url}"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-[11px] font-bold text-red-400 hover:text-red-300"
-              >
-                Ver nota completa ↗
-              </a>
-            </div>
-          </div>
-        `
-        )
-        .join('');
-    }
-
-    function updateClockStatus() {
-      const badge = document.getElementById('clockBadge');
-      const dot = document.getElementById('clockDot');
-      const text = document.getElementById('clockText');
-      const simBtn = document.getElementById('toggleSimBtn');
-
-      const now = new Date();
-      const minutesNow = now.getHours() * 60 + now.getMinutes();
-      const cutoffMinutes = 18 * 60 + 30;
-      const isNightActive = simulatedNight || minutesNow >= cutoffMinutes || minutesNow < 6 * 60;
-
-      const timeStr = simulatedNight
-        ? '18:45 PM (Simulado)'
-        : now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-
-      if (isNightActive) {
-        badge.className = 'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border bg-red-950/90 border-red-500 text-red-200 shadow';
-        dot.className = 'w-2 h-2 rounded-full bg-red-500 animate-pulse';
-        text.textContent = `${timeStr} · CORTE NOCTURNO ACTIVO`;
+        
